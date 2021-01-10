@@ -30,6 +30,7 @@ EXPECTED_GAMES = set([
     "backgammon",
     "battleship",
     "blackjack",
+    "blokus",
     "blotto",
     "breakthrough",
     "bridge",
