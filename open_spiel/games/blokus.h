@@ -99,7 +99,7 @@ class Move {
         void GetCorners();
 
         bool SpaceTaken(const std::vector<std::vector<BlokusCell>>&) const;
-        // TODO: Merge definitions
+        // TODO: Merge definitions since similar
         bool ContainsNeighbor(const std::vector<std::vector<BlokusCell>>&, BlokusCell cell) const;
         bool ContainsCorner(const std::vector<std::vector<BlokusCell>>&, BlokusCell cell) const;
 };
@@ -107,7 +107,7 @@ class Move {
 // State of an in-play game.
 class BlokusState : public State {
     public:
-        BlokusState(std::shared_ptr<const Game> game);
+        BlokusState(std::shared_ptr<const Game> game, const std::vector<Piece>&, const std::vector<Move>&);
 
         BlokusState(const BlokusState&) = default;
         BlokusState& operator=(const BlokusState&) = default;
@@ -129,9 +129,8 @@ class BlokusState : public State {
 
     protected:
         void DoApplyAction(Action move) override;
-        void InitializePieces();
-        void GenerateValidMoves();
-        bool IsValidPermutation(int i, int j, std::set<std::pair<int, int>> rotation) const;
+        //void InitializePieces();
+        //void GenerateValidMoves();
         bool IsValidMove(BlokusCell current_player, const Move& move) const;
         bool IsValidIndex(int i, int j) const;
         bool FoundNeighbor(int player, const std::vector<std::pair<int, int>>& positions) const;
@@ -143,14 +142,16 @@ class BlokusState : public State {
     private:
         BlokusCell current_player_ = kPlayer1;
         Player outcome_ = kEmpty;
-        int num_done_ = 0;
         std::vector<std::vector<BlokusCell>> board_;
-        std::vector<Piece> pieces_;
 
-        std::vector<Move> moves_;
+        const std::vector<Piece>& pieces_;
+        const std::vector<Move>& moves_;
+
         std::unordered_map<std::string, int> string_to_action;
 
         std::array<std::array<bool, kNumPieces>, kNumPlayers> valid_pieces_;
+        
+        int num_done_ = 0;
 
         // TODO: make this an object?
         std::array<int, kNumPlayers> moves_left_;
@@ -162,21 +163,32 @@ class BlokusState : public State {
 
 // Game object.
 class BlokusGame : public Game {
- public:
-  explicit BlokusGame(const GameParameters& params);
-  int NumDistinctActions() const override { return kNumDistinctActions; };
-  std::unique_ptr<State> NewInitialState() const override {
-    return std::unique_ptr<State>(new BlokusState(shared_from_this()));
-  }
-  int NumPlayers() const override { return kNumPlayers; }
-  double MinUtility() const override { return -1; }
-  double UtilitySum() const override { return 0; }
-  double MaxUtility() const override { return 1; }
-  std::vector<int> ObservationTensorShape() const override {
-    return {kNumRows, kNumCols}; // 2d tensor
-  }
-  int BoardSize() const { return kBoardSize; };
-  int MaxGameLength() const override { return kNumPieces * kNumPlayers; }
+    public:
+        explicit BlokusGame(const GameParameters& params);
+        int NumDistinctActions() const override { return kNumDistinctActions; };
+        std::unique_ptr<State> NewInitialState() const override {
+        return std::unique_ptr<State>(new BlokusState(
+            shared_from_this(), pieces_, moves_));
+        }
+        int NumPlayers() const override { return kNumPlayers; }
+        double MinUtility() const override { return -1; }
+        double UtilitySum() const override { return 0; }
+        double MaxUtility() const override { return 1; }
+        std::vector<int> ObservationTensorShape() const override {
+        return {kNumRows, kNumCols}; // 2d tensor
+        }
+        int BoardSize() const { return kBoardSize; };
+        int MaxGameLength() const override { return kNumPieces * kNumPlayers; }
+    
+    private:
+        // TODO: Should be shared pointer
+        std::vector<Piece> pieces_;
+        std::vector<Move> moves_;
+
+        void InitializePieces();
+        void GenerateValidMoves();
+        bool IsValidPermutation(int i, int j, std::set<std::pair<int, int>> rotation) const;
+
 };
 
 }  // namespace blokus

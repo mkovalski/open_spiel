@@ -249,15 +249,9 @@ std::string Move::ToString() const {
     return str;
 }
 
-BlokusState::BlokusState(std::shared_ptr<const Game> game)
-    : State(game), board_(kNumRows, std::vector<BlokusCell>(kNumCols, kEmpty)) {
+BlokusState::BlokusState(std::shared_ptr<const Game> game, const std::vector<Piece>& pieces, const std::vector<Move>& moves)
+    : State(game), board_(kNumRows, std::vector<BlokusCell>(kNumCols, kEmpty)), pieces_(pieces), moves_(moves)  {
 
-    // Fill up the pieces for each player
-    InitializePieces();
-    
-    // Generate the moves we are allowed to use
-    GenerateValidMoves();
-    
     // Initialize with all thue moves left
     std::fill(moves_left_.begin(), moves_left_.end(), kNumPieces);
 
@@ -286,24 +280,8 @@ BlokusState::BlokusState(std::shared_ptr<const Game> game)
     for (auto &piece : valid_pieces_) {
         piece.fill(true);
     }
-    /*
-    valid_pieces_[0].fill(true);
-    valid_pieces_[1].fill(true);
-    valid_pieces_[2].fill(true);
-    valid_pieces_[3].fill(true);
-    */
 }
 
-bool BlokusState::IsValidPermutation(int i, int j, std::set<std::pair<int, int>> rotation) const {
-    for (const auto& coordinate: rotation) {
-        if ((coordinate.first + i < 0) || (coordinate.first + i >= kNumRows) || 
-            (coordinate.second + j < 0) || (coordinate.second + j >= kNumCols)) {
-            return false;
-        }
-    }
-
-    return true;
-}
 
 bool BlokusState::IsValidIndex(int i, int j) const {
     if ((i < 0) || (i >= kNumRows) || (j < 0) || (j >= kNumCols)) {
@@ -312,52 +290,7 @@ bool BlokusState::IsValidIndex(int i, int j) const {
     return true;
 }
 
-void BlokusState::GenerateValidMoves() {
-    int piece_idx = 0;
-    int move_idx = 0;
 
-    for (Piece &piece : pieces_) {
-        for (auto permutation: piece.GetPermutations()) {
-            for (int i = 0; i < kNumRows; ++i) {
-                for (int j = 0; j < kNumCols; ++j) {
-                    if (IsValidPermutation(i, j, permutation)) {
-                        moves_.push_back(Move(piece_idx, permutation, i, j, move_idx));
-                        move_idx++;
-                    }
-                }
-            }
-        }
-        piece_idx++;
-    }
-}
-
-void BlokusState::InitializePieces() {
-    using loc = std::pair<int, int>;
-    std::vector<std::vector<loc>> peice;
-    pieces_.push_back(Piece({{0, 0}}, "i1"));
-    pieces_.push_back(Piece({{0, 0}, {1, 0}}, "i2"));
-    pieces_.push_back(Piece({{0, 0}, {1, 0}, {2, 0}}, "i3"));
-    pieces_.push_back(Piece({{0, 0}, {1, 0}, {2, 0}, {3, 0}}, "i4"));
-    pieces_.push_back(Piece({{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}}, "i5"));
-    pieces_.push_back(Piece({{0, 0}, {0, 1}, {0, 2}, {0, 3}, {1, 3}}, "L5"));
-    pieces_.push_back(Piece({{0, 0}, {0, 1}, {0, 2}, {0, 3}, {1, 1}}, "Y"));
-    pieces_.push_back(Piece({{0, 0}, {0, 1}, {0, 2}, {1, 2}, {1, 3}}, "N"));
-    pieces_.push_back(Piece({{0, 0}, {1, 0}, {1, 1}}, "V3"));
-    pieces_.push_back(Piece({{0, 0}, {0, 1}, {1, 1}, {2, 0}, {2, 1}}, "U"));
-    pieces_.push_back(Piece({{0, 0}, {1, 0}, {2, 0}, {2, 1}, {2, 2}}, "V5"));
-    pieces_.push_back(Piece({{0, 0}, {1, 0}, {1, 1}, {2, 1}, {2, 2}}, "Z5"));
-    pieces_.push_back(Piece({{0, 1}, {1, 0}, {1, 1}, {1, 2}, {2, 1}}, "X"));
-    pieces_.push_back(Piece({{0, 0}, {0, 1}, {0, 2}, {1, 1}, {2, 1}}, "T5"));
-    pieces_.push_back(Piece({{0, 0}, {1, 0}, {1, 1}, {2, 1}, {2, 2}}, "W"));
-    pieces_.push_back(Piece({{0, 0}, {0, 1}, {1, 0}, {1, 1}, {2, 0}}, "P"));
-    pieces_.push_back(Piece({{0, 1}, {0, 2}, {1, 0}, {1, 1}, {2, 1}}, "F"));
-    pieces_.push_back(Piece({{0, 0}, {0, 1}, {1, 0}, {1, 1}}, "O4"));
-    pieces_.push_back(Piece({{0, 0}, {0, 1}, {0, 2}, {1, 2}}, "L4"));
-    pieces_.push_back(Piece({{0, 0}, {0, 1}, {0, 2}, {1, 1}}, "T4"));
-    pieces_.push_back(Piece({{0, 0}, {0, 1}, {1, 1}, {1, 2}}, "Z4"));
-
-    SPIEL_CHECK_EQ(pieces_.size(), kNumPieces);
-}
 
 bool BlokusState::FoundNeighbor(int player, const std::vector<std::pair<int, int>>& positions) const {
     std::pair<int, int> searchLoc;
@@ -579,11 +512,74 @@ std::unique_ptr<State> BlokusState::Clone() const {
 }
 
 void BlokusState::UndoAction(Player player, Action move) {
-
+    // TODO
 }
 
 BlokusGame::BlokusGame(const GameParameters& params) 
-    : Game(kGameType, params) {}
+    : Game(kGameType, params) {
+
+    InitializePieces();
+    GenerateValidMoves();
+}
+
+void BlokusGame::InitializePieces() {
+    using loc = std::pair<int, int>;
+    std::vector<std::vector<loc>> peice;
+
+    pieces_.push_back(Piece({{0, 0}}, "i1"));
+    pieces_.push_back(Piece({{0, 0}, {1, 0}}, "i2"));
+    pieces_.push_back(Piece({{0, 0}, {1, 0}, {2, 0}}, "i3"));
+    pieces_.push_back(Piece({{0, 0}, {1, 0}, {2, 0}, {3, 0}}, "i4"));
+    pieces_.push_back(Piece({{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}}, "i5"));
+    pieces_.push_back(Piece({{0, 0}, {0, 1}, {0, 2}, {0, 3}, {1, 3}}, "L5"));
+    pieces_.push_back(Piece({{0, 0}, {0, 1}, {0, 2}, {0, 3}, {1, 1}}, "Y"));
+    pieces_.push_back(Piece({{0, 0}, {0, 1}, {0, 2}, {1, 2}, {1, 3}}, "N"));
+    pieces_.push_back(Piece({{0, 0}, {1, 0}, {1, 1}}, "V3"));
+    pieces_.push_back(Piece({{0, 0}, {0, 1}, {1, 1}, {2, 0}, {2, 1}}, "U"));
+    pieces_.push_back(Piece({{0, 0}, {1, 0}, {2, 0}, {2, 1}, {2, 2}}, "V5"));
+    pieces_.push_back(Piece({{0, 0}, {1, 0}, {1, 1}, {2, 1}, {2, 2}}, "Z5"));
+    pieces_.push_back(Piece({{0, 1}, {1, 0}, {1, 1}, {1, 2}, {2, 1}}, "X"));
+    pieces_.push_back(Piece({{0, 0}, {0, 1}, {0, 2}, {1, 1}, {2, 1}}, "T5"));
+    pieces_.push_back(Piece({{0, 0}, {1, 0}, {1, 1}, {2, 1}, {2, 2}}, "W"));
+    pieces_.push_back(Piece({{0, 0}, {0, 1}, {1, 0}, {1, 1}, {2, 0}}, "P"));
+    pieces_.push_back(Piece({{0, 1}, {0, 2}, {1, 0}, {1, 1}, {2, 1}}, "F"));
+    pieces_.push_back(Piece({{0, 0}, {0, 1}, {1, 0}, {1, 1}}, "O4"));
+    pieces_.push_back(Piece({{0, 0}, {0, 1}, {0, 2}, {1, 2}}, "L4"));
+    pieces_.push_back(Piece({{0, 0}, {0, 1}, {0, 2}, {1, 1}}, "T4"));
+    pieces_.push_back(Piece({{0, 0}, {0, 1}, {1, 1}, {1, 2}}, "Z4"));
+
+    SPIEL_CHECK_EQ(pieces_.size(), kNumPieces);
+}
+
+void BlokusGame::GenerateValidMoves() {
+    int piece_idx = 0;
+    int move_idx = 0;
+
+    for (Piece &piece : pieces_) {
+        for (auto permutation: piece.GetPermutations()) {
+            for (int i = 0; i < kNumRows; ++i) {
+                for (int j = 0; j < kNumCols; ++j) {
+                    if (IsValidPermutation(i, j, permutation)) {
+                        moves_.push_back(Move(piece_idx, permutation, i, j, move_idx));
+                        move_idx++;
+                    }
+                }
+            }
+        }
+        piece_idx++;
+    }
+}
+
+bool BlokusGame::IsValidPermutation(int i, int j, std::set<std::pair<int, int>> rotation) const {
+    for (const auto& coordinate: rotation) {
+        if ((coordinate.first + i < 0) || (coordinate.first + i >= kNumRows) || 
+            (coordinate.second + j < 0) || (coordinate.second + j >= kNumCols)) {
+            return false;
+        }
+    }
+
+    return true;
+}
 
 
 }  // namespace blokus
