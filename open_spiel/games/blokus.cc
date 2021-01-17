@@ -214,17 +214,11 @@ bool Move::ContainsCorner(const std::vector<std::vector<BlokusCell>>& board, Blo
 }
 
 bool Move::IsValidMove(const std::vector<std::vector<BlokusCell>>& board, BlokusCell cell) const {
-    if (!SpaceTaken(board) && !ContainsNeighbor(board, cell) && ContainsCorner(board, cell)) {
-        return true;
-    }
-    return false;
+    return (!SpaceTaken(board) && !ContainsNeighbor(board, cell) && ContainsCorner(board, cell));
 }
 
 bool Move::IsValidFirstMove(const std::pair<int, int>& valid_move) const {
-    if (positions_.find(valid_move) != positions_.end()) {
-        return true;
-    }
-    return false;
+    return (positions_.find(valid_move) != positions_.end());
 }
 
 void Move::Apply(std::vector<std::vector<BlokusCell>>& board, BlokusCell cell) const {
@@ -406,10 +400,10 @@ std::string BlokusState::ToString() const {
 }
 
 std::vector<double> BlokusState::Returns() const {
-    if (outcome_ == kPlayer1) return {1, 0, 0, 0};
-    if (outcome_ == kPlayer2) return {0, 1, 0, 0};
-    if (outcome_ == kPlayer3) return {0, 0, 1, 0};
-    if (outcome_ == kPlayer4) return {0, 0, 0, 1};
+    if (outcome_ == kPlayer1) return {1, -1, -1, -1};
+    if (outcome_ == kPlayer2) return {-1, 1, -1, -1};
+    if (outcome_ == kPlayer3) return {-1, -1, 1, -1};
+    if (outcome_ == kPlayer4) return {-1, -1, -1, 1};
     return {0, 0, 0, 0};
 }
 

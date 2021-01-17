@@ -175,7 +175,7 @@ class BlokusGame : public Game {
         double UtilitySum() const override { return 0; }
         double MaxUtility() const override { return 1; }
         std::vector<int> ObservationTensorShape() const override {
-        return {kNumRows, kNumCols}; // 2d tensor
+        return {1, kNumRows, kNumCols}; // 2d tensor
         }
         int BoardSize() const { return kBoardSize; };
         int MaxGameLength() const override { return kNumPieces * kNumPlayers; }
